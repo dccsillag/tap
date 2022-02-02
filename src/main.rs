@@ -152,6 +152,13 @@ fn main() -> Result<()> {
             .ok_or(Error::msg("Could not detect the build system"))?,
     };
 
+    let build_dir = std::env::current_dir()
+        .with_context(|| "Couldn't get current directory")?
+        .join(match opts.build_mode {
+            BuildMode::Debug => ".tap_build_debug",
+            BuildMode::Release => ".tap_build_release",
+        });
+
     match opts.subcommand {
         Subcommand::Build => match build_system {
             BuildSystem::Make => match opts.build_mode {
@@ -159,23 +166,76 @@ fn main() -> Result<()> {
                 BuildMode::Release => run_command("make", &["CFLAGS=-O3"]),
             },
             BuildSystem::CMake => todo!(),
-            BuildSystem::Meson => todo!(),
+            BuildSystem::Meson => {
+                if !build_dir.exists() {
+                    match run_command(
+                        "meson",
+                        &[
+                            "setup",
+                            &format!(
+                                "--buildtype={}",
+                                match opts.build_mode {
+                                    BuildMode::Debug => "debug",
+                                    BuildMode::Release => "release",
+                                },
+                            ),
+                            build_dir
+                                .to_str()
+                                .expect("Path couldn't be converted to str"),
+                        ],
+                    ) {
+                        Ok(()) => Ok(()),
+                        Err(e) => {
+                            if build_dir.exists() {
+                                std::fs::remove_dir_all(&build_dir)
+                                    .with_context(|| "Couldn't clean up partial build directory")?;
+                            }
+                            Err(e)
+                        }
+                    }?;
+                }
+
+                run_command(
+                    "meson",
+                    &[
+                        "compile",
+                        "-C",
+                        &build_dir
+                            .to_str()
+                            .expect("Path couldn't be converted to str"),
+                    ],
+                )
+            }
         },
-        Subcommand::Run { executable, args } => match build_system {
-            BuildSystem::Make => run_command(
-                &executable,
-                args.iter()
-                    .map(String::as_str)
-                    .collect::<Vec<_>>()
-                    .as_slice(),
-            ),
-            BuildSystem::CMake => todo!(),
-            BuildSystem::Meson => todo!(),
-        },
+        Subcommand::Run { executable, args } => {
+            let args = args.iter().map(String::as_str).collect::<Vec<_>>();
+            let args = args.as_slice();
+            match build_system {
+                BuildSystem::Make => run_command(&executable, args),
+                BuildSystem::CMake => todo!(),
+                BuildSystem::Meson => run_command(
+                    build_dir
+                        .join(executable)
+                        .to_str()
+                        .expect("Couldn't convert executable path to string"),
+                    args,
+                ),
+            }
+        }
         Subcommand::Clean => match build_system {
             BuildSystem::Make => run_command("make", &["clean"]),
             BuildSystem::CMake => todo!(),
-            BuildSystem::Meson => todo!(),
+            BuildSystem::Meson => run_command(
+                "meson",
+                &[
+                    "compile",
+                    "-C",
+                    &build_dir
+                        .to_str()
+                        .expect("Path couldn't be converted to str"),
+                    "--clean",
+                ],
+            ),
         },
         Subcommand::Install { prefix } => {
             let prefix = match prefix {
@@ -188,7 +248,16 @@ fn main() -> Result<()> {
                     run_command("make", &["install", &format!("PREFIX={:?}", prefix)])
                 }
                 BuildSystem::CMake => todo!(),
-                BuildSystem::Meson => todo!(),
+                BuildSystem::Meson => run_command(
+                    "meson",
+                    &[
+                        "install",
+                        "-C",
+                        &build_dir
+                            .to_str()
+                            .expect("Path couldn't be converted to str"),
+                    ],
+                ),
             }
         }
     }
