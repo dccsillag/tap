@@ -23,7 +23,6 @@ struct Opts {
     #[clap(short, long, global = true)]
     n_jobs: Option<usize>,
 
-    // TODO dry run
     #[clap(subcommand)]
     subcommand: Subcommand,
 }
