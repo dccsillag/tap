@@ -5,7 +5,7 @@ use std::{
 };
 
 use anyhow::{Context, Error, Result};
-use clap::{ArgEnum, Parser, AppSettings};
+use clap::{AppSettings, ArgEnum, Parser};
 use colored::Colorize;
 
 #[derive(Parser)]
