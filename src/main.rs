@@ -6,6 +6,7 @@ use std::{
 
 use anyhow::{Context, Error, Result};
 use clap::{ArgEnum, Parser};
+use colored::Colorize;
 
 #[derive(Parser)]
 struct Opts {
@@ -50,6 +51,38 @@ pub enum BuildMode {
     Release,
 }
 
+enum Tap<'a> {
+    ChangeDirectory { path: &'a Path },
+    RunCommand { command: &'a Command },
+}
+
+impl<'a> Tap<'a> {
+    fn get_prefix(&self) -> (&str, &str) {
+        match self {
+            Self::ChangeDirectory { .. } => ("cd", "yellow"),
+            Self::RunCommand { .. } => ("run", "purple"),
+        }
+    }
+
+    fn get_message(&self) -> String {
+        match self {
+            Self::ChangeDirectory { path } => format!("{:?}", path),
+            Self::RunCommand { command } => format!("{:?}", command),
+        }
+    }
+
+    pub fn print(self) {
+        let (prefix, color) = self.get_prefix();
+        let icon = " ".bold();
+        println!(
+            " {} {} {}",
+            icon,
+            format!(" {} ", prefix).bold().reversed().color(color),
+            self.get_message()
+        );
+    }
+}
+
 impl BuildSystem {
     fn detect_in_dir(path: &Path) -> Option<Self> {
         if path.join("CMakeLists.txt").exists() {
@@ -68,6 +101,7 @@ impl BuildSystem {
         let mut path = path.as_path();
         while path.parent().is_some() {
             if let Some(build_system) = Self::detect_in_dir(path) {
+                Tap::ChangeDirectory { path }.print();
                 std::env::set_current_dir(path)?;
                 return Ok(Some(build_system));
             }
@@ -81,7 +115,7 @@ fn run_command(mut command: impl BorrowMut<Command>) -> Result<()> {
     let command: &mut Command = command.borrow_mut();
 
     {
-        println!("   {:?}", command);
+        Tap::RunCommand { command: command }.print();
 
         let exit_status = command
             .spawn()
