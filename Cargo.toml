@@ -9,4 +9,5 @@ edition = "2021"
 anyhow = "1.0.53"
 clap = { version = "3.0.14", features = ["derive"] }
 colored = "2.0.0"
+shell-words = "1.0.0"
 thiserror = "1.0.30"

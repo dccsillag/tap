@@ -1,5 +1,4 @@
 use std::{
-    borrow::BorrowMut,
     path::{Path, PathBuf},
     process::Command,
 };
@@ -52,8 +51,13 @@ pub enum BuildMode {
 }
 
 enum Tap<'a> {
-    ChangeDirectory { path: &'a Path },
-    RunCommand { command: &'a Command },
+    ChangeDirectory {
+        path: &'a Path,
+    },
+    RunCommand {
+        command: &'a str,
+        args: &'a [&'a str],
+    },
 }
 
 impl<'a> Tap<'a> {
@@ -67,7 +71,7 @@ impl<'a> Tap<'a> {
     fn get_message(&self) -> String {
         match self {
             Self::ChangeDirectory { path } => format!("{:?}", path),
-            Self::RunCommand { command } => format!("{:?}", command),
+            Self::RunCommand { command, args } => command_to_string(command, args),
         }
     }
 
@@ -111,13 +115,16 @@ impl BuildSystem {
     }
 }
 
-fn run_command(mut command: impl BorrowMut<Command>) -> Result<()> {
-    let command: &mut Command = command.borrow_mut();
+fn command_to_string(command: &str, args: &[&str]) -> String {
+    shell_words::join(std::iter::once(&command).chain(args.into_iter()))
+}
 
+fn run_command(command: &str, args: &[&str]) -> Result<()> {
     {
-        Tap::RunCommand { command: command }.print();
+        Tap::RunCommand { command, args }.print();
 
-        let exit_status = command
+        let exit_status = Command::new(command)
+            .args(args)
             .spawn()
             .with_context(|| "Couldn't spawn process")?
             .wait()
@@ -132,7 +139,7 @@ fn run_command(mut command: impl BorrowMut<Command>) -> Result<()> {
             }))
         }
     }
-    .with_context(|| format!("While running command {:?}", command))
+    .with_context(|| format!("While running command {}", command_to_string(command, args)))
 }
 
 fn main() -> Result<()> {
@@ -148,19 +155,25 @@ fn main() -> Result<()> {
     match opts.subcommand {
         Subcommand::Build => match build_system {
             BuildSystem::Make => match opts.build_mode {
-                BuildMode::Debug => run_command(Command::new("make")),
-                BuildMode::Release => run_command(Command::new("make").arg("CFLAGS=-O3")),
+                BuildMode::Debug => run_command("make", &[]),
+                BuildMode::Release => run_command("make", &["CFLAGS=-O3"]),
             },
             BuildSystem::CMake => todo!(),
             BuildSystem::Meson => todo!(),
         },
         Subcommand::Run { executable, args } => match build_system {
-            BuildSystem::Make => run_command(Command::new(executable).args(args)),
+            BuildSystem::Make => run_command(
+                &executable,
+                args.iter()
+                    .map(String::as_str)
+                    .collect::<Vec<_>>()
+                    .as_slice(),
+            ),
             BuildSystem::CMake => todo!(),
             BuildSystem::Meson => todo!(),
         },
         Subcommand::Clean => match build_system {
-            BuildSystem::Make => run_command(Command::new("make").arg("clean")),
+            BuildSystem::Make => run_command("make", &["clean"]),
             BuildSystem::CMake => todo!(),
             BuildSystem::Meson => todo!(),
         },
@@ -171,11 +184,9 @@ fn main() -> Result<()> {
             };
 
             match build_system {
-                BuildSystem::Make => run_command(
-                    Command::new("make")
-                        .arg("install")
-                        .arg(format!("PREFIX={:?}", prefix)),
-                ),
+                BuildSystem::Make => {
+                    run_command("make", &["install", &format!("PREFIX={:?}", prefix)])
+                }
                 BuildSystem::CMake => todo!(),
                 BuildSystem::Meson => todo!(),
             }
