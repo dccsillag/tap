@@ -159,6 +159,9 @@ fn main() -> Result<()> {
             BuildMode::Debug => ".tap_build_debug",
             BuildMode::Release => ".tap_build_release",
         });
+    let build_dir_str = build_dir
+        .to_str()
+        .expect("Path couldn't be converted to str");
 
     match opts.subcommand {
         Subcommand::Build => match build_system {
@@ -180,9 +183,7 @@ fn main() -> Result<()> {
                                     BuildMode::Release => "release",
                                 },
                             ),
-                            build_dir
-                                .to_str()
-                                .expect("Path couldn't be converted to str"),
+                            build_dir_str,
                         ],
                     ) {
                         Ok(()) => Ok(()),
@@ -196,16 +197,7 @@ fn main() -> Result<()> {
                     }?;
                 }
 
-                run_command(
-                    "meson",
-                    &[
-                        "compile",
-                        "-C",
-                        &build_dir
-                            .to_str()
-                            .expect("Path couldn't be converted to str"),
-                    ],
-                )
+                run_command("meson", &["compile", "-C", build_dir_str])
             }
         },
         Subcommand::Run { executable, args } => {
@@ -226,17 +218,9 @@ fn main() -> Result<()> {
         Subcommand::Clean => match build_system {
             BuildSystem::Make => run_command("make", &["clean"]),
             BuildSystem::CMake => todo!(),
-            BuildSystem::Meson => run_command(
-                "meson",
-                &[
-                    "compile",
-                    "-C",
-                    &build_dir
-                        .to_str()
-                        .expect("Path couldn't be converted to str"),
-                    "--clean",
-                ],
-            ),
+            BuildSystem::Meson => {
+                run_command("meson", &["compile", "-C", build_dir_str, "--clean"])
+            }
         },
         Subcommand::Install { prefix } => {
             let prefix = match prefix {
@@ -263,21 +247,10 @@ fn main() -> Result<()> {
                             "configure",
                             "-D",
                             &format!("prefix={:?}", prefix),
-                            &build_dir
-                                .to_str()
-                                .expect("Path couldn't be converted to str"),
+                            build_dir_str,
                         ],
                     )?;
-                    run_command(
-                        "meson",
-                        &[
-                            "install",
-                            "-C",
-                            &build_dir
-                                .to_str()
-                                .expect("Path couldn't be converted to str"),
-                        ],
-                    )
+                    run_command("meson", &["install", "-C", build_dir_str])
                 }
             }
         }
