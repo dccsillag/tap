@@ -10,12 +10,16 @@ use colored::Colorize;
 
 #[derive(Parser)]
 struct Opts {
+    /// Which build system to use. If unspecified, then this is automatically deduced
     #[clap(arg_enum, short, long)]
     build_system: Option<BuildSystem>,
 
+    /// Which build mode to use
     #[clap(arg_enum, short('m'), long, default_value("debug"))]
     build_mode: BuildMode,
 
+    /// How many jobs to use for compilation.
+    /// Defaults to the number of available threads.
     #[clap(short, long)]
     n_jobs: Option<usize>,
 
@@ -26,13 +30,25 @@ struct Opts {
 
 #[derive(Parser)]
 enum Subcommand {
+    /// Build the project
     Build,
+
+    /// Run an executable compiled by the project
     Run {
+        /// Which executable to run
         executable: String,
+        /// Arguments to be passed to the executable
         args: Vec<String>,
     },
+
+    /// Clean build files
     Clean,
+
+    /// Install built binaries
     Install {
+        /// Where to install to.
+        /// If run as root, this defaults to `/usr/local`. Otherwise, defaults to the parent
+        /// directory of where executables should be installed for your user (usually `~/.local`)
         #[clap(long)]
         prefix: Option<PathBuf>,
     },
