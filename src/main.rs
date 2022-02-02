@@ -19,7 +19,7 @@ struct Opts {
     build_mode: BuildMode,
 
     /// How many jobs to use for compilation.
-    /// Defaults to the number of available threads.
+    /// Defaults to the number of available threads
     #[clap(short, long, global = true)]
     n_jobs: Option<usize>,
 
