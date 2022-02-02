@@ -1,4 +1,8 @@
-use std::{borrow::BorrowMut, path::PathBuf, process::Command};
+use std::{
+    borrow::BorrowMut,
+    path::{Path, PathBuf},
+    process::Command,
+};
 
 use anyhow::{Context, Error, Result};
 use clap::{ArgEnum, Parser};
@@ -47,8 +51,29 @@ pub enum BuildMode {
 }
 
 impl BuildSystem {
-    pub fn detect() -> Option<Self> {
-        todo!("build system detection")
+    fn detect_in_dir(path: &Path) -> Option<Self> {
+        if path.join("CMakeLists.txt").exists() {
+            Some(Self::CMake)
+        } else if path.join("Makefile").exists() || path.join("makefile").exists() {
+            Some(Self::Make)
+        } else if path.join("meson.build").exists() {
+            Some(Self::Meson)
+        } else {
+            None
+        }
+    }
+
+    pub fn detect() -> Result<Option<Self>, std::io::Error> {
+        let path = std::env::current_dir()?;
+        let mut path = path.as_path();
+        while path.parent().is_some() {
+            if let Some(build_system) = Self::detect_in_dir(path) {
+                std::env::set_current_dir(path)?;
+                return Ok(Some(build_system));
+            }
+            path = path.parent().unwrap();
+        }
+        Ok(None)
     }
 }
 
@@ -81,7 +106,9 @@ fn main() -> Result<()> {
 
     let build_system = match opts.build_system {
         Some(x) => x,
-        None => BuildSystem::detect().ok_or(Error::msg("Could not detect the build system"))?,
+        None => BuildSystem::detect()
+            .with_context(|| "Couldn't detect the build system")?
+            .ok_or(Error::msg("Could not detect the build system"))?,
     };
 
     match opts.subcommand {
