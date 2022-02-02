@@ -8,7 +8,9 @@ So, Tap is a layer of abstraction over the mess that is C/C++ build systems, pro
 
 # Installation
 
-TODO
+```sh
+cargo install --git https://github.com/dccsillag/tap.git
+```
 
 # Usage
 
