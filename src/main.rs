@@ -82,7 +82,7 @@ impl<'a> Tap<'a> {
             " {} {} {}",
             icon,
             format!(" {} ", prefix).bold().reversed().color(color),
-            self.get_message()
+            self.get_message().bold()
         );
     }
 }
