@@ -71,7 +71,7 @@ impl<'a> Tap<'a> {
 
     fn get_message(&self) -> String {
         match self {
-            Self::ChangeDirectory { path } => format!("{:?}", path),
+            Self::ChangeDirectory { path } => path.to_string_lossy().into(),
             Self::RunCommand { command, args } => command_to_string(command, args),
         }
     }
@@ -159,9 +159,7 @@ fn main() -> Result<()> {
             BuildMode::Debug => ".tap_build_debug",
             BuildMode::Release => ".tap_build_release",
         });
-    let build_dir_str = build_dir
-        .to_str()
-        .expect("Path couldn't be converted to str");
+    let build_dir_str = &build_dir.to_string_lossy().into_owned();
 
     match opts.subcommand {
         Subcommand::Build => match build_system {
@@ -206,13 +204,9 @@ fn main() -> Result<()> {
             match build_system {
                 BuildSystem::Make => run_command(&executable, args),
                 BuildSystem::CMake => todo!(),
-                BuildSystem::Meson => run_command(
-                    build_dir
-                        .join(executable)
-                        .to_str()
-                        .expect("Couldn't convert executable path to string"),
-                    args,
-                ),
+                BuildSystem::Meson => {
+                    run_command(&build_dir.join(executable).to_string_lossy(), args)
+                }
             }
         }
         Subcommand::Clean => match build_system {
@@ -236,9 +230,10 @@ fn main() -> Result<()> {
             };
 
             match build_system {
-                BuildSystem::Make => {
-                    run_command("make", &["install", &format!("PREFIX={:?}", prefix)])
-                }
+                BuildSystem::Make => run_command(
+                    "make",
+                    &["install", &format!("PREFIX={}", prefix.to_string_lossy())],
+                ),
                 BuildSystem::CMake => todo!(),
                 BuildSystem::Meson => {
                     run_command(
@@ -246,7 +241,7 @@ fn main() -> Result<()> {
                         &[
                             "configure",
                             "-D",
-                            &format!("prefix={:?}", prefix),
+                            &format!("prefix={}", prefix.to_string_lossy()),
                             build_dir_str,
                         ],
                     )?;
