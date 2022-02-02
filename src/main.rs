@@ -61,7 +61,7 @@ pub enum BuildSystem {
     Meson,
 }
 
-#[derive(Debug, Clone, ArgEnum)]
+#[derive(Debug, Clone, PartialEq, Eq, ArgEnum)]
 pub enum BuildMode {
     Debug,
     Release,
@@ -243,6 +243,17 @@ fn main() -> Result<()> {
             }
         },
         Subcommand::Install { prefix } => {
+            if opts.build_mode == BuildMode::Debug {
+                println!("No build mode set, defaulting to debug mode.");
+                println!("It is usually a good idea to install executables in release mode (by passing `-m release`).");
+                println!("Are you sure you want to continue, in debug mode?");
+                if !dialoguer::Confirm::with_theme(&dialoguer::theme::ColorfulTheme::default())
+                    .interact()?
+                {
+                    return Err(Error::msg("Aborted."));
+                }
+            }
+
             let prefix = match prefix {
                 Some(x) => x,
                 None => {
