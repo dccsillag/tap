@@ -5,7 +5,7 @@ use std::{
 };
 
 use anyhow::{Context, Error, Result};
-use clap::{ArgEnum, Parser};
+use clap::{ArgEnum, Parser, AppSettings};
 use colored::Colorize;
 
 #[derive(Parser)]
@@ -29,6 +29,7 @@ struct Opts {
 }
 
 #[derive(Parser)]
+#[clap(setting(AppSettings::InferSubcommands))]
 enum Subcommand {
     /// Build the project
     Build,
