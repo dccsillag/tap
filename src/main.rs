@@ -225,6 +225,11 @@ fn main() -> Result<()> {
                     } else {
                         dirs::executable_dir()
                             .with_context(|| "Couldn't get the user's executable directory")?
+                            .parent()
+                            .ok_or(Error::msg(
+                                "Couldn't get the parent of the user's executable directory",
+                            ))?
+                            .to_path_buf()
                     }
                 }
             };
