@@ -1,0 +1,40 @@
+on:
+  push:
+    tags:
+      - '*'
+
+name: Release
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target:
+          - arm-unknown-linux-gnueabihf
+          - arm-unknown-linux-musleabihf
+          - x86_64-unknown-linux-gnu
+          - x86_64-unknown-linux-musl
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v2
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: ${{ matrix.target }}
+          override: true
+      - name: Build
+        uses: actions-rs/cargo@v1
+        with:
+          use-cross: true
+          command: build
+          args: --release --target=${{ matrix.target }}
+      # TODO: strip executable?
+      - name: Archive the built binary
+        run: tar -czf tap-${{ matrix.target }}.tar.gz --directory=target/${{ matrix.target }}/release tap
+      - name: Publish built binary
+        uses: softprops/action-gh-release@v1
+        with:
+          files: tap-${{ matrix.target }}.tar.gz
