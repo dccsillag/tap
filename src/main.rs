@@ -9,6 +9,7 @@ use clap::{AppSettings, ArgEnum, Parser};
 use colored::Colorize;
 
 #[derive(Parser)]
+#[clap(version, author, about)]
 struct Opts {
     /// Which build system to use. If unspecified, then this is automatically deduced
     #[clap(arg_enum, short, long)]
