@@ -15,12 +15,12 @@ struct Opts {
     build_system: Option<BuildSystem>,
 
     /// Which build mode to use
-    #[clap(arg_enum, short('m'), long, default_value("debug"))]
+    #[clap(arg_enum, short = 'm', long, default_value = "debug", global = true)]
     build_mode: BuildMode,
 
     /// How many jobs to use for compilation.
     /// Defaults to the number of available threads.
-    #[clap(short, long)]
+    #[clap(short, long, global = true)]
     n_jobs: Option<usize>,
 
     // TODO dry run
