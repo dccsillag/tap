@@ -16,8 +16,10 @@ struct Opts {
     #[clap(arg_enum, short('m'), long, default_value("debug"))]
     build_mode: BuildMode,
 
+    #[clap(short, long)]
+    n_jobs: Option<usize>,
+
     // TODO dry run
-    // TODO number of jobs
     #[clap(subcommand)]
     subcommand: Subcommand,
 }
@@ -161,11 +163,18 @@ fn main() -> Result<()> {
         });
     let build_dir_str = &build_dir.to_string_lossy().into_owned();
 
+    let n_jobs = match opts.n_jobs {
+        Some(n) => n,
+        None => num_cpus::get(),
+    };
+
     match opts.subcommand {
         Subcommand::Build => match build_system {
             BuildSystem::Make => match opts.build_mode {
-                BuildMode::Debug => run_command("make", &[]),
-                BuildMode::Release => run_command("make", &["CFLAGS=-O3"]),
+                BuildMode::Debug => run_command("make", &["-j", &n_jobs.to_string()]),
+                BuildMode::Release => {
+                    run_command("make", &["CFLAGS=-O3", "-j", &n_jobs.to_string()])
+                }
             },
             BuildSystem::CMake => todo!(),
             BuildSystem::Meson => {
@@ -195,7 +204,10 @@ fn main() -> Result<()> {
                     }?;
                 }
 
-                run_command("meson", &["compile", "-C", build_dir_str])
+                run_command(
+                    "meson",
+                    &["compile", "-C", build_dir_str, "-j", &n_jobs.to_string()],
+                )
             }
         },
         Subcommand::Run { executable, args } => {

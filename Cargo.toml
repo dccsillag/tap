@@ -11,5 +11,6 @@ clap = { version = "3.0.14", features = ["derive"] }
 colored = "2.0.0"
 dirs = "4.0.0"
 nix = "0.23.1"
+num_cpus = "1.13.1"
 shell-words = "1.0.0"
 thiserror = "1.0.30"
