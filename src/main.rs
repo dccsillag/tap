@@ -1,6 +1,7 @@
 use std::{
     path::{Path, PathBuf},
     process::Command,
+    str::FromStr,
 };
 
 use anyhow::{Context, Error, Result};
@@ -240,7 +241,14 @@ fn main() -> Result<()> {
         Subcommand::Install { prefix } => {
             let prefix = match prefix {
                 Some(x) => x,
-                None => todo!("get default prefix based on user"),
+                None => {
+                    if nix::unistd::getuid().is_root() {
+                        PathBuf::from_str("/usr/local/").unwrap()
+                    } else {
+                        dirs::executable_dir()
+                            .with_context(|| "Couldn't get the user's executable directory")?
+                    }
+                }
             };
 
             match build_system {
