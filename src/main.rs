@@ -248,16 +248,29 @@ fn main() -> Result<()> {
                     run_command("make", &["install", &format!("PREFIX={:?}", prefix)])
                 }
                 BuildSystem::CMake => todo!(),
-                BuildSystem::Meson => run_command(
-                    "meson",
-                    &[
-                        "install",
-                        "-C",
-                        &build_dir
-                            .to_str()
-                            .expect("Path couldn't be converted to str"),
-                    ],
-                ),
+                BuildSystem::Meson => {
+                    run_command(
+                        "meson",
+                        &[
+                            "configure",
+                            "-D",
+                            &format!("prefix={:?}", prefix),
+                            &build_dir
+                                .to_str()
+                                .expect("Path couldn't be converted to str"),
+                        ],
+                    )?;
+                    run_command(
+                        "meson",
+                        &[
+                            "install",
+                            "-C",
+                            &build_dir
+                                .to_str()
+                                .expect("Path couldn't be converted to str"),
+                        ],
+                    )
+                }
             }
         }
     }
