@@ -52,8 +52,6 @@ enum Subcommand {
         #[clap(long)]
         prefix: Option<PathBuf>,
     },
-    // TODO test
-    // TODO benchmarks
 }
 
 #[derive(Debug, Clone, ArgEnum)]
