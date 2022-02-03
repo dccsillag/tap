@@ -134,7 +134,7 @@ impl BuildSystem {
 }
 
 fn command_to_string(command: &str, args: &[&str]) -> String {
-    shell_words::join(std::iter::once(&command).chain(args.into_iter()))
+    shell_words::join(std::iter::once(&command).chain(args.iter()))
 }
 
 fn run_command(command: &str, args: &[&str]) -> Result<()> {
@@ -220,7 +220,7 @@ fn perform_subcommand(
             let args = args.iter().map(String::as_str).collect::<Vec<_>>();
             let args = args.as_slice();
             match build_system {
-                BuildSystem::Make => run_command(&executable, args),
+                BuildSystem::Make => run_command(executable, args),
                 BuildSystem::CMake => todo!(),
                 BuildSystem::Meson => {
                     run_command(&build_dir.join(executable).to_string_lossy(), args)
@@ -258,9 +258,11 @@ fn perform_subcommand(
                         dirs::executable_dir()
                             .with_context(|| "Couldn't get the user's executable directory")?
                             .parent()
-                            .ok_or(Error::msg(
-                                "Couldn't get the parent of the user's executable directory",
-                            ))?
+                            .ok_or_else(|| {
+                                Error::msg(
+                                    "Couldn't get the parent of the user's executable directory",
+                                )
+                            })?
                             .to_path_buf()
                     }
                 }
@@ -296,7 +298,7 @@ fn main() -> Result<()> {
         Some(x) => x,
         None => BuildSystem::detect()
             .with_context(|| "Couldn't detect the build system")?
-            .ok_or(Error::msg("Could not detect the build system"))?,
+            .ok_or_else(|| Error::msg("Could not detect the build system"))?,
     };
 
     let n_jobs = match opts.n_jobs {
