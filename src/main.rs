@@ -55,14 +55,14 @@ enum Subcommand {
     },
 }
 
-#[derive(Debug, Clone, ArgEnum)]
+#[derive(Debug, Clone, Copy, ArgEnum)]
 pub enum BuildSystem {
     Make,
     CMake,
     Meson,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, ArgEnum)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ArgEnum)]
 pub enum BuildMode {
     Debug,
     Release,
@@ -160,32 +160,23 @@ fn run_command(command: &str, args: &[&str]) -> Result<()> {
     .with_context(|| format!("While running command {}", command_to_string(command, args)))
 }
 
-fn main() -> Result<()> {
-    let opts = Opts::parse();
-
-    let build_system = match opts.build_system {
-        Some(x) => x,
-        None => BuildSystem::detect()
-            .with_context(|| "Couldn't detect the build system")?
-            .ok_or(Error::msg("Could not detect the build system"))?,
-    };
-
+fn perform_subcommand(
+    subcommand: &Subcommand,
+    build_system: BuildSystem,
+    build_mode: BuildMode,
+    n_jobs: usize,
+) -> Result<()> {
     let build_dir = std::env::current_dir()
         .with_context(|| "Couldn't get current directory")?
-        .join(match opts.build_mode {
+        .join(match build_mode {
             BuildMode::Debug => ".tap_build_debug",
             BuildMode::Release => ".tap_build_release",
         });
     let build_dir_str = &build_dir.to_string_lossy().into_owned();
 
-    let n_jobs = match opts.n_jobs {
-        Some(n) => n,
-        None => num_cpus::get(),
-    };
-
-    match opts.subcommand {
+    match subcommand {
         Subcommand::Build => match build_system {
-            BuildSystem::Make => match opts.build_mode {
+            BuildSystem::Make => match build_mode {
                 BuildMode::Debug => run_command("make", &["-j", &n_jobs.to_string()]),
                 BuildMode::Release => {
                     run_command("make", &["CFLAGS=-O3", "-j", &n_jobs.to_string()])
@@ -200,7 +191,7 @@ fn main() -> Result<()> {
                             "setup",
                             &format!(
                                 "--buildtype={}",
-                                match opts.build_mode {
+                                match build_mode {
                                     BuildMode::Debug => "debug",
                                     BuildMode::Release => "release",
                                 },
@@ -244,7 +235,7 @@ fn main() -> Result<()> {
             }
         },
         Subcommand::Install { prefix } => {
-            if opts.build_mode == BuildMode::Debug {
+            if build_mode == BuildMode::Debug {
                 println!("No build mode set, defaulting to debug mode.");
                 println!("It is usually a good idea to install executables in release mode (by passing `-m release`).");
                 println!("Are you sure you want to continue, in debug mode?");
@@ -255,8 +246,8 @@ fn main() -> Result<()> {
                 }
             }
 
-            let prefix = match prefix {
-                Some(x) => x,
+            let prefix = match prefix.as_ref() {
+                Some(x) => x.to_owned(),
                 None => {
                     if nix::unistd::getuid().is_root() {
                         PathBuf::from_str("/usr/local/").unwrap()
@@ -293,4 +284,22 @@ fn main() -> Result<()> {
             }
         }
     }
+}
+
+fn main() -> Result<()> {
+    let opts = Opts::parse();
+
+    let build_system = match opts.build_system {
+        Some(x) => x,
+        None => BuildSystem::detect()
+            .with_context(|| "Couldn't detect the build system")?
+            .ok_or(Error::msg("Could not detect the build system"))?,
+    };
+
+    let n_jobs = match opts.n_jobs {
+        Some(n) => n,
+        None => num_cpus::get(),
+    };
+
+    perform_subcommand(&opts.subcommand, build_system, opts.build_mode, n_jobs)
 }
