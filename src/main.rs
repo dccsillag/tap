@@ -235,6 +235,9 @@ fn perform_subcommand(
             }
         },
         Subcommand::Install { prefix } => {
+            perform_subcommand(&Subcommand::Build, build_system, build_mode, n_jobs)
+                .with_context(|| "While building the binary")?;
+
             if build_mode == BuildMode::Debug {
                 println!("No build mode set, defaulting to debug mode.");
                 println!("It is usually a good idea to install executables in release mode (by passing `-m release`).");
