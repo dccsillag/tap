@@ -217,6 +217,9 @@ fn perform_subcommand(
             }
         },
         Subcommand::Run { executable, args } => {
+            perform_subcommand(&Subcommand::Build, build_system, build_mode, n_jobs)
+                .with_context(|| "While building the binary")?;
+
             let args = args.iter().map(String::as_str).collect::<Vec<_>>();
             let args = args.as_slice();
             match build_system {
